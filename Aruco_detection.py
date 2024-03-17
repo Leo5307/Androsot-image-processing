@@ -8,6 +8,8 @@ import pandas as pd
 import cv2
 
 cap = cv2.VideoCapture(0)
+cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
+cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
 if not cap.isOpened():
  print("Cannot open camera")
  exit()
