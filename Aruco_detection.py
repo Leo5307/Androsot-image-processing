@@ -20,8 +20,6 @@ while True:
         print("Can't receive frame (stream end?). Exiting ...")
         break
     # Our operations on the frame come here
-    # gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    # frame = cv2.imread("squares.png")
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     aruco_dict = cv2.aruco.getPredefinedDictionary(aruco.DICT_6X6_250)
     parameters =  cv2.aruco.DetectorParameters()
@@ -30,54 +28,14 @@ while True:
     corners, ids, rejectedImgPoints = detector.detectMarkers(gray)
     frame_markers = aruco.drawDetectedMarkers(frame.copy(), corners, ids,borderColor=(0, 255, 0))
 
-# for i in range(len(ids)):
-#     c = corners[i][0]
-#     center = tuple(np.int32(c.mean(axis=0)))  # Calculate the center point of the marker
-#     marker_id = str(ids[i][0])
-    # cv2.putText(frame_markers, marker_id, center, cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
-
     # Display the result
     cv2.imshow("Frame Markers", frame_markers)
-        # Display the resulting frame
-    # cv2.imshow('frame', gray)
+
     if cv2.waitKey(1) == ord('q'):
         break
  
 # When everything done, release the capture
 cap.release()
-cv2.destroyAllWindows()
-
-# aruco_dict = aruco.Dictionary_get(aruco.DICT_6X6_250)
-
-# fig = plt.figure()
-# nx = 4
-# ny = 3
-# for i in range(1, nx*ny+1):
-#     ax = fig.add_subplot(ny,nx, i)
-#     img = aruco.drawMarker(aruco_dict,i, 700)
-#     plt.imshow(img, cmap = mpl.cm.gray, interpolation = "nearest")
-#     ax.axis("off")
-
-# plt.savefig("squares.png")
-frame = cv2.imread("squares.png")
-gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-aruco_dict = cv2.aruco.getPredefinedDictionary(aruco.DICT_6X6_250)
-parameters =  cv2.aruco.DetectorParameters()
-detector = cv2.aruco.ArucoDetector(aruco_dict, parameters)
-
-corners, ids, rejectedImgPoints = detector.detectMarkers(gray)
-frame_markers = aruco.drawDetectedMarkers(frame.copy(), corners, ids,borderColor=(0, 255, 0))
-
-# for i in range(len(ids)):
-#     c = corners[i][0]
-#     center = tuple(np.int32(c.mean(axis=0)))  # Calculate the center point of the marker
-#     marker_id = str(ids[i][0])
-    # cv2.putText(frame_markers, marker_id, center, cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
-
-# Display the result
-cv2.imshow("Frame Markers", frame_markers)
-# cv2.imwrite('frame_markers.png', frame_markers)
-cv2.waitKey(0)
 cv2.destroyAllWindows()
 
 
