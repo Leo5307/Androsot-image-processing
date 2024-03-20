@@ -140,12 +140,12 @@ while True:
 
     key = cv2.waitKey(1)
 
-    if key == 27:         # 按esc键退出
+    if key == 27:
         print('esc break...')
         cap.release()
         cv2.destroyAllWindows()
         break
 
-    if key == ord(' '):   # 按空格鍵保存
+    if key == ord(' '):
         filename = str(time.time())[:10] + ".jpg"
         cv2.imwrite(filename, frame)
