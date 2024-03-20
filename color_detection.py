@@ -44,8 +44,10 @@ while True:
         cropped_frame = frame[x1:x2,y1:y2]
         cv2.rectangle(frame_markers, (x1,y1), (x2,y2), (0, 255, 0), 2)
         print("start detect color")
-        hsv_image = cv2.cvtColor( cropped_frame, cv2.COLOR_BGR2HSV)
+        if cropped_frame.size == 0:
+            continue
 
+        hsv_image = cv2.cvtColor( cropped_frame, cv2.COLOR_BGR2HSV)
         #定義範圍
         red_lower_1= np.array([0, 50, 50])
         red_upper_1 = np.array([10, 255, 255])
@@ -62,7 +64,7 @@ while True:
 
         num_red = np.sum(mask_red)
         num_green = np.sum(mask_green)
-        num_blue = np.sum(mask_blue)
+        num_blue = np.sum(mask_blue)#會有 三個都是0的情況 不知道為什麼 可能範圍沒選對
 
         #找出最常見的顏色
         max_color = np.argmax(np.array([num_blue, num_green, num_red]))
