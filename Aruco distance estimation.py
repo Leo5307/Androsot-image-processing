@@ -24,17 +24,19 @@ def my_estimatePoseSingleMarkers(corners, marker_size, mtx, distortion):
     tvecs = []
     
     for c in corners:
+        #c 是image pt marker pt是 object pt
         nada, R, t = cv2.solvePnP(marker_points, c, mtx, distortion, False, cv2.SOLVEPNP_IPPE_SQUARE)
         rvecs.append(R)
         tvecs.append(t)
+        #nada 通常是一個布林值，表示求解过程是否成功
         trash.append(nada)
     rvecs = np.array(rvecs)
     rvecs = rvecs.reshape(-1,1,3)
     tvecs = np.array(tvecs)
     tvecs = tvecs.reshape(-1,1,3)
     return rvecs, tvecs, trash
-#加载鱼眼镜头的yaml标定文件，检测aruco并且估算与标签之间的距离,获取偏航，俯仰，滚动
 
+#加载鱼眼镜头的yaml标定文件，检测aruco并且估算与标签之间的距离,获取偏航，俯仰，滚动
 #加载相机纠正参数
 # cv_file = cv2.FileStorage("yuyan.yaml", cv2.FILE_STORAGE_READ)
 # camera_matrix = cv_file.getNode("camera_matrix").mat()
@@ -45,23 +47,11 @@ distortion_coefficients_path = "./distortion_coefficients.npy"
 camera_matrix = np.load(calibration_matrix_path)
 dist_matrix = np.load(distortion_coefficients_path)
 
-
-#默认cam参数
-# dist=np.array(([[-0.58650416 , 0.59103816, -0.00443272 , 0.00357844 ,-0.27203275]]))
-# newcameramtx=np.array([[189.076828   ,  0.    ,     361.20126638]
-#  ,[  0 ,2.01627296e+04 ,4.52759577e+02]
-#  ,[0, 0, 1]])
-# mtx=np.array([[398.12724231  , 0.      ,   304.35638757],
-#  [  0.       ,  345.38259888, 282.49861858],
-#  [  0.,           0.,           1.        ]])
-
-
-
-cap = cv2.VideoCapture(0)
+cap = cv2.VideoCapture(0,cv2.CAP_DSHOW) 
 # cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'))
 cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
 cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
-
+cap.set(cv2.CAP_PROP_FPS, 60)  # 设置帧率为30帧/秒
 font = cv2.FONT_HERSHEY_SIMPLEX #font for displaying text (below)
 
 #num = 0
@@ -71,31 +61,27 @@ if not cap.isOpened():
 while True:
     ret, frame = cap.read()
     h1, w1 = frame.shape[:2]
-    # 读取摄像头画面
-    # 纠正畸变
-    #？？？校正後會把畫面變小
-    # newcameramtx, roi = cv2.getOptimalNewCameraMatrix(camera_matrix, dist_matrix, (h1, w1), 0, (h1, w1))
-    # dst1 = cv2.undistort(frame, camera_matrix, dist_matrix, None, newcameramtx)
-    # x, y, w1, h1 = roi
-    # dst1 = dst1[y:y + h1, x:x + w1]
-    # frame=dst1
+    #糾正畸變
+    newcameramtx, roi = cv2.getOptimalNewCameraMatrix(camera_matrix, dist_matrix, (h1, w1), 1, (h1, w1))
+    dst1 = cv2.undistort(frame, camera_matrix, dist_matrix, None, newcameramtx)
+    x, y, w1, h1 = roi
+    dst1 = dst1[y:y + h1, x:x + w1]
+    # frame=dst1#可以再想想要不要切
+    # print("h,w",h1,w1)
+    # print("roi",roi)
 
-    #灰度化，检测aruco标签，所用字典为6×6——250
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     aruco_dict = cv2.aruco.getPredefinedDictionary(aruco.DICT_6X6_250)
     parameters =  cv2.aruco.DetectorParameters()
     detector = cv2.aruco.ArucoDetector(aruco_dict, parameters)
 
-    #使用aruco.detectMarkers()函数可以检测到marker，返回ID和标志板的4个角点坐标
+    #使用aruco.detectMarkers()函數可以檢測到marker，返回ID和标志板的4个角点坐標
     corners, ids, rejectedImgPoints = detector.detectMarkers(gray)
 
 #    如果找不到id
     if ids is not None:
-        #获取aruco返回的rvec旋转矩阵、tvec位移矩阵
-
         rvec, tvec, _ = my_estimatePoseSingleMarkers(corners, 0.053, camera_matrix, dist_matrix)
-        # 估计每个标记的姿态并返回值rvet和tvec ---不同
-        #rvec为旋转矩阵，tvec为位移矩阵
+        #rvec为旋轉向量，tvec为位移向量
         # from camera coeficcients
         (rvec-tvec).any() # get rid of that nasty numpy value array error
         print(rvec,np.shape(rvec))
@@ -105,52 +91,67 @@ while True:
 
 
 
-        #在画面上 标注auruco标签的各轴
+        #標註各軸
         for i in range(rvec.shape[0]):
+            #X: red, Y: green, Z: blue
             cv2.drawFrameAxes(frame, camera_matrix, dist_matrix, rvec[i, :, :], tvec[i, :, :], 0.03)
-            aruco.drawDetectedMarkers(frame.copy(), corners, ids,borderColor=(0, 255, 0))
+        # frame = aruco.drawDetectedMarkers(frame.copy(), corners, ids,borderColor=(0, 255, 0))
 
 
-        ###### 显示id标记 #####
+
+        ###### 顯示id標記 #####
         cv2.putText(frame, "Id: " + str(ids), (0,64), font, 1, (0,255,0),2,cv2.LINE_AA)
 
 
-        ###### 角度估计 #####
-        #print(rvec)
-        #考虑Z轴（蓝色）的角度
-        #本来正确的计算方式如下，但是由于蜜汁相机标定的问题，实测偏航角度能最大达到104°所以现在×90/104这个系数作为最终角度
-        deg=rvec[0][0][2]/math.pi*180
-        #deg=rvec[0][0][2]/math.pi*180*90/104
+        #計算角度
         # 旋转矩阵到欧拉角
         R=np.zeros((3,3),dtype=np.float64)
         cv2.Rodrigues(rvec,R)
+        # print("rotation matrix",R)
         sy=math.sqrt(R[0,0] * R[0,0] +  R[1,0] * R[1,0])
-        singular=sy< 1e-6
-        if not singular:#偏航，俯仰，滚动
+        singular=sy< 1e-6#解決Singular問題
+        if not singular:
             x = math.atan2(R[2, 1], R[2, 2])
-            y = math.atan2(-R[2, 0], sy)
+            y = math.asin(-R[2, 0])
             z = math.atan2(R[1, 0], R[0, 0])
         else:
             x = math.atan2(-R[1, 2], R[1, 1])
             y = math.atan2(-R[2, 0], sy)
             z = 0
-        # 偏航，俯仰，滚动换成角度
+        #轉成角度
         rx = x * 180.0 / 3.141592653589793
         ry = y * 180.0 / 3.141592653589793
         rz = z * 180.0 / 3.141592653589793
 
-        cv2.putText(frame,'deg_z:'+str(ry)+str('deg'),(0, 140), font, 1, (0, 255, 0), 2,
+        cv2.putText(frame,'deg_x:'+str(round(rx,4))+str(' deg'),(0, 140), font, 1, (0, 255, 0), 2,
                     cv2.LINE_AA)
-        #print("偏航，俯仰，滚动",rx,ry,rz)
-
+        cv2.putText(frame,'deg_y:'+str(round(ry,4))+str(' deg'),(0, 180), font, 1, (0, 255, 0), 2,
+                    cv2.LINE_AA)
+        #Androsot要找的是對著z軸旋轉的角度
+        cv2.putText(frame,'deg_z:'+str(round(rz,4))+str(' deg'),(0, 220), font, 1, (0, 255, 0), 2,
+                    cv2.LINE_AA)
+        
 
         ###### 距离估计 #####
-        # distance = ((tvec[0][0][2] + 0.02)) * 100  # 单位是米
-        distance = (tvec[0][0][2]) * 100  # 单位是米
+        # 单位是m
+        # distance = ((tvec[0][0][2] + 0.02)) * 100 
+        distance = (tvec[0][0][2]) * 100  #change to cm
+        distance_x = (tvec[0][0][0]) * 100  
+        distance_y = (tvec[0][0][1]) * 100  
+        distance_z = (tvec[0][0][2]) * 100  
+        tmp = distance_z*distance_z -  110*110
+        distance = np.sqrt(tmp)
 
 
-        # 显示距离
-        cv2.putText(frame, 'distance:' + str(round(distance, 4)) + str('m'), (0, 110), font, 1, (0, 255, 0), 2,
+        # 距離
+        cv2.putText(frame, 'distance:' + str(round(distance, 4)) + str(' cm'), (0, 260), font, 1, (0, 255, 0), 2,
+                    cv2.LINE_AA)
+        
+        cv2.putText(frame, 'distance_x:' + str(round(distance_x, 4)) + str(' cm'), (0, 300), font, 1, (0, 255, 0), 2,
+                    cv2.LINE_AA)
+        cv2.putText(frame, 'distance_y:' + str(round(distance_y, 4)) + str(' cm'), (0, 340), font, 1, (0, 255, 0), 2,
+                    cv2.LINE_AA)
+        cv2.putText(frame, 'distance_z:' + str(round(distance_z, 4)) + str(' cm'), (0, 380), font, 1, (0, 255, 0), 2,
                     cv2.LINE_AA)
 
         ####真实坐标换算####（to do）
@@ -166,7 +167,7 @@ while True:
         cv2.putText(frame, "No Ids", (0,64), font, 1, (0,255,0),2,cv2.LINE_AA)
 
 
-    # 显示结果画面
+    # 顯示結果畫面
     cv2.imshow("frame",frame)
 
     key = cv2.waitKey(1)
@@ -177,8 +178,6 @@ while True:
         cv2.destroyAllWindows()
         break
 
-    if key == ord(' '):   # 按空格键保存
-#        num = num + 1
-#        filename = "frames_%s.jpg" % num  # 保存一张图像
+    if key == ord(' '):   # 按空格鍵保存
         filename = str(time.time())[:10] + ".jpg"
         cv2.imwrite(filename, frame)

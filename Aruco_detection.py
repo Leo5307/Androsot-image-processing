@@ -7,7 +7,9 @@ import pandas as pd
 
 import cv2
 
-cap = cv2.VideoCapture(0)
+# cap = cv2.VideoCapture(0)
+cap = cv2.VideoCapture(0,cv2.CAP_DSHOW) 
+
 cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
 cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
 if not cap.isOpened():
@@ -16,8 +18,8 @@ if not cap.isOpened():
 while True:
  # Capture frame-by-frame
     ret, frame = cap.read()
-    
-    # if frame is read correctly ret is True
+ 
+    # if frame is read correctly ret is True 
     if not ret:
         print("Can't receive frame (stream end?). Exiting ...")
         break
