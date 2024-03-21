@@ -5,6 +5,7 @@ import cv2
 import cv2.aruco as aruco
 import math
 ARUCO_SIZE = 0.09#0.053
+CAMERA_HEIGHT = 1.1
 #ref:https://stackoverflow.com/questions/76802576/how-to-estimate-pose-of-single-marker-in-opencv-python-4-8-0
 def my_estimatePoseSingleMarkers(corners, marker_size, mtx, distortion):
     '''
@@ -37,6 +38,37 @@ def my_estimatePoseSingleMarkers(corners, marker_size, mtx, distortion):
     tvecs = tvecs.reshape(-1,1,3)
     return rvecs, tvecs, trash
 
+def rotation_mtx2euler_angle(Rotation_matrix):
+    R = Rotation_matrix
+    sy = math.sqrt(R[0,0] * R[0,0] +  R[1,0] * R[1,0])
+    singular=sy< 1e-6#解決Singular問題
+    if not singular:
+        x = math.atan2(R[2, 1], R[2, 2])
+        y = math.asin(-R[2, 0])
+        z = math.atan2(R[1, 0], R[0, 0])
+    else:
+        x = math.atan2(-R[1, 2], R[1, 1])
+        y = math.atan2(-R[2, 0], sy)
+        z = 0
+    #轉成角度
+    rx = x * 180.0 / 3.141592653589793
+    ry = y * 180.0 / 3.141592653589793
+    rz = z * 180.0 / 3.141592653589793
+
+    return rx,ry,rz
+def calc_Aruco_distance(tvec):
+    ###### 距離估計 #####
+    distance = (tvec[0][0][2]) * 100  #change to cm
+    distance_x = (tvec[0][0][0]) * 100  
+    distance_y = (tvec[0][0][1]) * 100  
+    distance_z = (tvec[0][0][2]) * 100  
+    if (distance_z):#判斷值是否正確
+        tmp = distance_z*distance_z - (CAMERA_HEIGHT*100)**2
+        distance = np.sqrt(tmp)
+    else:
+        distance = -99999#不能計算
+    return distance,distance_x,distance_y,distance_z
+
 #加载鱼眼镜头的yaml标定文件，检测aruco并且估算与标签之间的距离,获取偏航，俯仰，滚动
 #加载相机纠正参数
 # cv_file = cv2.FileStorage("yuyan.yaml", cv2.FILE_STORAGE_READ)
@@ -52,7 +84,7 @@ cap = cv2.VideoCapture(0,cv2.CAP_DSHOW)
 # cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'))
 cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
 cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
-cap.set(cv2.CAP_PROP_FPS, 60)  # 设置帧率为30帧/秒
+cap.set(cv2.CAP_PROP_FPS, 60)  # 设置帧率为60帧/秒
 font = cv2.FONT_HERSHEY_SIMPLEX #font for displaying text (below)
 
 #num = 0
@@ -88,51 +120,19 @@ while True:
                 #X: red, Y: green, Z: blue
                 cv2.drawFrameAxes(frame, camera_matrix, dist_matrix, rvec[i, :, :], tvec[i, :, :], 0.03)
                 # frame = aruco.drawDetectedMarkers(frame.copy(), corners, ids,borderColor=(0, 255, 0))
-            
-            #計算角度
-            # 旋转矩阵到欧拉角
             R = np.zeros((3,3),dtype=np.float64)
             cv2.Rodrigues(rvec,R)
-
-            sy = math.sqrt(R[0,0] * R[0,0] +  R[1,0] * R[1,0])
-            singular=sy< 1e-6#解決Singular問題
-            if not singular:
-                x = math.atan2(R[2, 1], R[2, 2])
-                y = math.asin(-R[2, 0])
-                z = math.atan2(R[1, 0], R[0, 0])
-            else:
-                x = math.atan2(-R[1, 2], R[1, 1])
-                y = math.atan2(-R[2, 0], sy)
-                z = 0
-            #轉成角度
-            rx = x * 180.0 / 3.141592653589793
-            ry = y * 180.0 / 3.141592653589793
-            rz = z * 180.0 / 3.141592653589793
-
-
+            rx,ry,rz = rotation_mtx2euler_angle(Rotation_matrix=R)
             ###### 距離估計 #####
-            # 单位是m
-            # distance = ((tvec[0][0][2] + 0.02)) * 100 
-            distance = (tvec[0][0][2]) * 100  #change to cm
-            distance_x = (tvec[0][0][0]) * 100  
-            distance_y = (tvec[0][0][1]) * 100  
-            distance_z = (tvec[0][0][2]) * 100  
-            if (distance_z):#判斷值是否正確
-                tmp = distance_z*distance_z -  110*110
-                distance = np.sqrt(tmp)
-            else:
-                distance = -99999#不能計算
+            distance,distance_x,distance_y,distance_z = calc_Aruco_distance
+
             distance_list.append(round(distance,2))
             degree_list.append(round(rz,2))
             id_list.append(ids[index][0])
 
     else:
-        ##### DRAW "NO IDS" #####
         cv2.putText(frame, "No Ids", (0,64), font, 1, (0,255,0),2,cv2.LINE_AA)
 
-
-    # 顯示結果畫面
-    # print("ids",ids)
     cv2.putText(frame,'ids:'+ str(id_list) ,(0, 110), font, 1, (0, 255, 0), 2,cv2.LINE_AA)
     cv2.putText(frame,'deg_z:'+ str(degree_list) ,(0, 150), font, 1, (0, 255, 0), 2,cv2.LINE_AA)
     cv2.putText(frame,'distance:'+ str(distance_list) ,(0, 190), font, 1, (0, 255, 0), 2,cv2.LINE_AA)
