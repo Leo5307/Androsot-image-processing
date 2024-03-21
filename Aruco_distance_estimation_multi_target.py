@@ -71,6 +71,7 @@ def calc_Aruco_distance(tvec):
 
 def get_Aruco_information(frame,corners,ids):
     distance_list = []
+    distance_x_list = []
     degree_list = []
     id_list = []
     calibration_matrix_path = "./calibration_matrix.npy"
@@ -95,6 +96,7 @@ def get_Aruco_information(frame,corners,ids):
                 distance,distance_x,distance_y,distance_z = calc_Aruco_distance(tvec=tvec)
 
                 distance_list.append(round(distance,2))
+                distance_x_list.append(round(distance_x,2))
                 degree_list.append(round(rz,2))
                 id_list.append(ids[index][0])
 
@@ -104,8 +106,9 @@ def get_Aruco_information(frame,corners,ids):
     cv2.putText(frame,'ids:'+ str(id_list) ,(0, 110), font, 1, (0, 255, 0), 2,cv2.LINE_AA)
     cv2.putText(frame,'deg_z:'+ str(degree_list) ,(0, 150), font, 1, (0, 255, 0), 2,cv2.LINE_AA)
     cv2.putText(frame,'distance:'+ str(distance_list) ,(0, 190), font, 1, (0, 255, 0), 2,cv2.LINE_AA)
+    cv2.putText(frame,'distance_x:'+ str(distance_x_list) ,(0, 230), font, 1, (0, 255, 0), 2,cv2.LINE_AA)
 
-    return frame,id_list,distance_list,degree_list
+    return frame,id_list,distance_list,distance_x_list,degree_list
 
 #加载鱼眼镜头的yaml标定文件，检测aruco并且估算与标签之间的距离,获取偏航，俯仰，滚动
 #加载相机纠正参数

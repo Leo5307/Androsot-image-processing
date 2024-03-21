@@ -55,18 +55,18 @@ if __name__ == '__main__':
 
         #使用aruco.detectMarkers()函數可以檢測到marker，返回ID和标志板的4个角点坐標
         corners, ids, rejectedImgPoints = detector.detectMarkers(gray)
-        frame,id_list,distance_list,degree_list = get_Aruco_information(frame=frame,corners=corners,ids=ids)
+        frame,id_list,distance_list,distance_x_list,degree_list = get_Aruco_information(frame=frame,corners=corners,ids=ids)
         red_team = Robot_Team(color='red')
         blue_team = Robot_Team(color='blue')
 
         for index,id in enumerate(id_list):
             if id % 2 == 0:
                 #even,blue team
-                blue_team.Robot_list.append(Robot(id=id,x=distance_list[index],y=distance_list[index],degree=degree_list[index]))
+                blue_team.Robot_list.append(Robot(id=id,x=distance_x_list[index],y=distance_list[index],degree=degree_list[index]))
 
             else:
                  #odd,blue team
-                red_team.Robot_list.append(Robot(id=id,x=distance_list[index],y=distance_list[index],degree=degree_list[index]))
+                red_team.Robot_list.append(Robot(id=id,x=distance_x_list[index],y=distance_list[index],degree=degree_list[index]))
 
         red_team.get_information()
         blue_team.get_information()
