@@ -69,10 +69,15 @@ def calc_Aruco_distance(tvec):
         distance = -99999#不能計算
     return distance,distance_x,distance_y,distance_z
 
-def get_Aruco_information(frame):
+def get_Aruco_information(frame,corners,ids):
     distance_list = []
     degree_list = []
     id_list = []
+    calibration_matrix_path = "./calibration_matrix.npy"
+    distortion_coefficients_path = "./distortion_coefficients.npy"
+    camera_matrix = np.load(calibration_matrix_path)
+    dist_matrix = np.load(distortion_coefficients_path)
+    font = cv2.FONT_HERSHEY_SIMPLEX #font for displaying text (below)
     #    如果找不到id
     if ids is not None:
             for index,i in enumerate(ids):
@@ -141,7 +146,7 @@ if __name__ == '__main__':
 
         #使用aruco.detectMarkers()函數可以檢測到marker，返回ID和标志板的4个角点坐標
         corners, ids, rejectedImgPoints = detector.detectMarkers(gray)
-        frame,_,_,_ = get_Aruco_information(frame=frame)
+        frame,_,_,_ = get_Aruco_information(frame=frame,corners=corners,ids=ids)
         cv2.imshow("frame",frame)
         key = cv2.waitKey(1)
 
