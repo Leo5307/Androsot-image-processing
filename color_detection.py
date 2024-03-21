@@ -60,17 +60,21 @@ while True:
 
         mask_red = cv2.inRange(hsv_image, red_lower_1, red_upper_1) +cv2.inRange(hsv_image, red_lower_2, red_upper_2)
         mask_green = cv2.inRange(hsv_image, green_lower, green_upper)
-        mask_blue = cv2.inRange(hsv_image, blue_lower, blue_upper)
+        mask_blue = cv2.inRange(hsv_image, blue_lower, blue_upper)   
 
         num_red = np.sum(mask_red)
         num_green = np.sum(mask_green)
         num_blue = np.sum(mask_blue)#會有 三個都是0的情況 不知道為什麼 可能範圍沒選對
 
         #找出最常見的顏色
-        max_color = np.argmax(np.array([num_blue, num_green, num_red]))
-        print(num_blue, num_green, num_red)
-        colors = {0:'Blue',1:'Green',2:'Red'}
-        print("Detect color", colors[max_color])
+        if num_blue == num_green == num_red:
+            print("No color")
+            continue
+        else:
+            max_color = np.argmax(np.array([num_blue, num_green, num_red]))
+            print(num_blue, num_green, num_red)
+            colors = {0:'Blue',1:'Green',2:'Red'}
+            print("Detect color", colors[max_color])
         cv2.rectangle(frame_markers, (x1,y1), (x2,y2), (0, 255, 0), 2)
 
     # Display the result
