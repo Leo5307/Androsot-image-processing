@@ -5,8 +5,8 @@ import cv2.aruco as aruco
 import math
 from Aruco_distance_estimation_multi_target import my_estimatePoseSingleMarkers,calc_Aruco_distance,rotation_mtx2euler_angle,get_Aruco_information
 
-ARUCO_SIZE = 0.09#0.053
-CAMERA_HEIGHT = 1.1
+ARUCO_SIZE = 0.08#0.053
+CAMERA_HEIGHT = 2
 class Robot():
     def __init__(self,id,x,y,degree): 
         self.id = id
@@ -23,14 +23,25 @@ class Robot_Team():
         print("Team:",self.color,"\n")
         for robot in self.Robot_list:
             print("robot:",robot.id," x:",robot.x," y:",robot.y," degree",robot.degree)
-
+            
+def gamma_correction(frame, gamma=1.0):
+	# build a lookup table mapping the pixel values [0, 255] to
+	# their adjusted gamma values
+	invGamma = 1.0 / gamma
+	table = np.array([((i / 255.0) ** invGamma) * 255
+		for i in np.arange(0, 256)]).astype("uint8")
+ 
+	# apply gamma correction using the lookup table
+	return cv2.LUT(frame, table)
 if __name__ == '__main__':
     calibration_matrix_path = "./calibration_matrix.npy"
     distortion_coefficients_path = "./distortion_coefficients.npy"
     camera_matrix = np.load(calibration_matrix_path)
     dist_matrix = np.load(distortion_coefficients_path)
 
-    cap = cv2.VideoCapture(0,cv2.CAP_DSHOW) 
+    cap = cv2.VideoCapture(1,cv2.CAP_DSHOW) 
+    cap = cv2.VideoCapture('2024-03-27_19-16-30.mp4') # 讀取電腦中的影片
+
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
     cap.set(cv2.CAP_PROP_FPS, 60)  # 设置帧率为60帧/秒
@@ -47,9 +58,18 @@ if __name__ == '__main__':
         dst1 = cv2.undistort(frame, camera_matrix, dist_matrix, None, newcameramtx)
         x, y, w1, h1 = roi
         dst1 = dst1[y:y + h1, x:x + w1]
-
+        # frame = dst1
+        points_path = "./points.npy"
+        points = np.load(points_path)
+        p1 = np.float32(points)
+        p2 = np.float32([[0,0],[1080,0],[0,1920],[1080,1920]])
+        m = cv2.getPerspectiveTransform(p1,p2)
+        # frame = cv2.warpPerspective(frame, m, (1080, 1920))
+        # frame = gamma_correction(frame,0.2)
+        frame = gamma_correction(frame, gamma=0.5)
+        # frame = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        aruco_dict = cv2.aruco.getPredefinedDictionary(aruco.DICT_6X6_250)
+        aruco_dict = cv2.aruco.getPredefinedDictionary(aruco.DICT_5X5_100)
         parameters =  cv2.aruco.DetectorParameters()
         detector = cv2.aruco.ArucoDetector(aruco_dict, parameters)
 
