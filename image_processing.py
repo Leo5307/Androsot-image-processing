@@ -156,7 +156,7 @@ if __name__ == '__main__':
 
         # frame_resized = cv2.resize(frame, (0, 0), fx=1000, fy=800)
         frame = cv2.warpPerspective(frame, m, (1080, 1920))
-        frame = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
+        frame = cv2.rotate(frame, cv2.ROTATE_90_COUNTERCLOCKWISE)
         ballcenter, ballradius = findball(frame)
         ballcenter = ballcenter[0]
         ballcenter = [int((ballcenter[0]/1920)*FIELD_LENGTH*100),int((ballcenter[1]/1080)*FIELD_WIDTH*100)]
