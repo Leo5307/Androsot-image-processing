@@ -73,15 +73,15 @@ def calc_Aruco_distance(tvec):
     return distance,distance_x,distance_y,distance_z
 
 def robot_pos_estimation(id,rvecs,tvecs):
-    print("id = ",id)
+    # print("id = ",id)
     rotation_bias = []
     t_vecs_bias = [0,0,0]
     # new_rvecs = np.ndarray((len(rvecs),3))
     rvecs = rvecs[0]
     tvecs = tvecs[0]
-    print("rvecs",rvecs)
+    # print("rvecs",rvecs)
     R,_ = cv2.Rodrigues(rvecs[0])
-    print(R)
+    # print(R)
     inv_R = np.linalg.inv(R)
     
     if (id == 0 or id == 1):
@@ -92,13 +92,10 @@ def robot_pos_estimation(id,rvecs,tvecs):
 
     elif (id == 2 or id == 3):#front
         t_vecs_bias = np.dot(inv_R,[[0],[0],[0]]).flatten()
-        rotation_bias = [[1,0,0],
-                         [0,1,0],
-                         [0,0,1]]
-        t_vecs_bias = np.dot(inv_R,[[0],[0],[0]]).flatten()
         rotation_bias_1 = [[np.cos(np.deg2rad(180)),-np.sin(np.deg2rad(180)),0],
                         [np.sin(np.deg2rad(180)),np.cos(np.deg2rad(180)),0],
                         [0,0,1]]
+        
         rotation_bias_2 = [[1,0,0],
                          [0,np.cos(np.deg2rad(90)),-np.sin(np.deg2rad(90))],
                          [0,np.sin(np.deg2rad(90)),np.cos(np.deg2rad(90))]]
@@ -120,19 +117,6 @@ def robot_pos_estimation(id,rvecs,tvecs):
         # t_vecs_bias = np.dot(inv_R,[[0],[0.05],[-0.05]]).flatten()
         t_vecs_bias = np.dot(inv_R,[[0],[0],[0]]).flatten()
         rotation_bias = [[1,0,0],[0,np.cos(np.deg2rad(-90)),-np.sin(np.deg2rad(-90))],[0,np.sin(np.deg2rad(-90)),np.cos(np.deg2rad(-90))]]
-        # cv2.Rodrigues(np.dot(R,rotation),new_rvecs[i])
-        # R = [[ 0.99824623,  0.01475958, -0.05732906],
-        # [ 0.01097592, -0.99777497, -0.06576197],
-        # [-0.05817212,  0.0650174,  -0.9961871 ]]
-        # # new_rvecs = np.zeros((1,len(rvecs),3))
-        # print("show",R,rotation_bias)
-        # new_rvecs,_ = cv2.Rodrigues(np.dot(R,rotation_bias))
-        # new_tvecs = tvecs
-        # new_rvecs = np.array(new_rvecs)
-        # new_rvecs = new_rvecs.reshape(-1,1,3)
-        # print("ans",new_rvecs,rvecs)
-        # new_tvecs = new_tvecs.reshape(-1,1,3)
-        # return new_rvecs,new_tvecs
 
         
     elif(id == 10 or id == 11):#right
@@ -149,10 +133,6 @@ def robot_pos_estimation(id,rvecs,tvecs):
 
         rotation_bias = np.dot(rotation_bias_1,rotation_bias_2)
 
-    # else:
-    #     print("not found")
-    #     # return rvecs,tvecs
-
     new_tvecs = tvecs + t_vecs_bias 
     new_rvecs,_ = cv2.Rodrigues(np.dot(R,rotation_bias))
     new_rvecs = np.array(new_rvecs)
@@ -161,9 +141,16 @@ def robot_pos_estimation(id,rvecs,tvecs):
         
     return new_rvecs,new_tvecs
 
+def display(frame,id_list,degree_list_x,degree_list_y,degree_list_z,distance_list):
 
+    font = cv2.FONT_HERSHEY_SIMPLEX #font for displaying text (below)
+    cv2.putText(frame,'ids:'+ str(id_list) ,(0, 110), font, 1, (0, 255, 0), 2,cv2.LINE_AA)
+    cv2.putText(frame,'deg_x:'+ str(degree_list_x) ,(0, 150), font, 1, (0, 255, 0), 2,cv2.LINE_AA)
+    cv2.putText(frame,'deg_y:'+ str(degree_list_y) ,(0, 190), font, 1, (0, 255, 0), 2,cv2.LINE_AA)
+    cv2.putText(frame,'deg_z:'+ str(degree_list_z) ,(0, 230), font, 1, (0, 255, 0), 2,cv2.LINE_AA)
+    cv2.putText(frame,'distance:'+ str(distance_list) ,(0, 270), font, 1, (0, 255, 0), 2,cv2.LINE_AA)
 
-def get_Aruco_information(frame,corners,ids):
+def get_Aruco_information(camera_matrix,dist_matrix,frame,corners,ids):
     distance_list = []
     distance_x_list = []
     degree_list = []
@@ -172,23 +159,17 @@ def get_Aruco_information(frame,corners,ids):
     degree_list_z = []
 
     id_list = []
-    calibration_matrix_path = "./calibration_matrix.npy"
-    distortion_coefficients_path = "./distortion_coefficients.npy"
-    camera_matrix = np.load(calibration_matrix_path)
-    dist_matrix = np.load(distortion_coefficients_path)
     font = cv2.FONT_HERSHEY_SIMPLEX #font for displaying text (below)
     #    如果找不到id
     if ids is not None:
             for index,i in enumerate(ids):
                 rvec, tvec, _ = my_estimatePoseSingleMarkers(corners[index], ARUCO_SIZE, camera_matrix, dist_matrix)
                 (rvec-tvec).any() # get rid of that nasty numpy value array error
-                print("fr",rvec)
+                # print("fr",rvec)
                 new_rvec,new_tvec = robot_pos_estimation(ids[index][0],rvec,tvec)
                 
                 for i in range(new_rvec.shape[0]):
                     #X: red, Y: green, Z: blue
-                    # rvec[i],tvec[i] = robot_pos_estimation(ids[index][0],rvec[i],tvec[i])
-                    print("ans_out",new_rvec)
                     cv2.drawFrameAxes(frame, camera_matrix, dist_matrix, new_rvec, new_tvec, 0.03)
                     frame = aruco.drawDetectedMarkers(frame.copy(), corners, ids,borderColor=(0, 255, 0))
                 R = np.zeros((3,3),dtype=np.float64)
@@ -206,16 +187,8 @@ def get_Aruco_information(frame,corners,ids):
                 id_list.append(ids[index][0])
 
     else:
-        cv2.putText(frame, "No Ids", (0,64), font, 1, (0,255,0),2,cv2.LINE_AA)
-
-    cv2.putText(frame,'ids:'+ str(id_list) ,(0, 110), font, 1, (0, 255, 0), 2,cv2.LINE_AA)
-    cv2.putText(frame,'deg_x:'+ str(degree_list_x) ,(0, 150), font, 1, (0, 255, 0), 2,cv2.LINE_AA)
-    cv2.putText(frame,'deg_y:'+ str(degree_list_y) ,(0, 190), font, 1, (0, 255, 0), 2,cv2.LINE_AA)
-    cv2.putText(frame,'deg_z:'+ str(degree_list_z) ,(0, 230), font, 1, (0, 255, 0), 2,cv2.LINE_AA)
-    cv2.putText(frame,'distance:'+ str(distance_list) ,(0, 270), font, 1, (0, 255, 0), 2,cv2.LINE_AA)
-    # cv2.putText(frame,'distance_x:'+ str(distance_x_list) ,(0, 230), font, 1, (0, 255, 0), 2,cv2.LINE_AA)
-
-    return frame,id_list,distance_list,distance_x_list,degree_list
+        cv2.putText(frame, "No Ids", (0,64), font, 1, (0,255,0),2,cv2.LINE_AA)    
+    return frame,id_list,distance_list,distance_x_list,degree_list,degree_list_x,degree_list_y,degree_list_z
 
 if __name__ == '__main__':
     calibration_matrix_path = "./calibration_matrix.npy"
@@ -251,7 +224,10 @@ if __name__ == '__main__':
         #使用aruco.detectMarkers()函數可以檢測到marker，返回ID和标志板的4个角点坐標
         corners, ids, rejectedImgPoints = detector.detectMarkers(gray)
 
-        frame,_,_,_,_ = get_Aruco_information(frame=frame,corners=corners,ids=ids)
+        frame,id_list,distance_list,distance_x_list,degree_list,degree_list_x,degree_list_y,degree_list_z\
+              = get_Aruco_information(camera_matrix=camera_matrix,dist_matrix=dist_matrix,frame=frame,corners=corners,ids=ids)
+        
+        # display(frame,id_list,degree_list_x,degree_list_y,degree_list_z,distance_list)
         cv2.imshow("frame",frame)
         key = cv2.waitKey(1)
 
