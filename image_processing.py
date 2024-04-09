@@ -23,11 +23,26 @@ class Robot():
         self.degree = 0
     
     def robot_pose_estimation(self):
-        for index,id in enumerate(self.aruco_id_list):
-            if(id == 1 or id == 0):#,3,5,7,9,clockwise
-                self.x = FIELD_LENGTH* 100 - (self.aruco_x_list[index] - CAMERA_DISTANCE*100)
-                self.y = (FIELD_WIDTH* 100/2 - self.aruco_y_list[index])
-                self.degree = self.aruco_degree_list[index]
+        index = 999
+        print(self.id)
+        if self.id == 0:
+            order = [0,6,2,8,4]
+        elif self.id == 1:
+            order = [1,9,3,5,11]
+        elif self.id == 2:
+            order = [0,16,12,18,14]
+        elif self.id == 3:
+            order = [11,19,13,15,11]
+
+        for id in order:
+            if id in self.aruco_id_list:
+                index = self.aruco_id_list.index(id)
+                break
+
+        if(index != 999):#,3,5,7,9,counterclockwise
+            self.x = FIELD_LENGTH* 100 - (self.aruco_x_list[index] - CAMERA_DISTANCE*100)
+            self.y = (FIELD_WIDTH* 100/2 - self.aruco_y_list[index])
+            self.degree = self.aruco_degree_list[index]
 
     def update_robot_position(self,id,aruco_id_list,aruco_x_list,aruco_y_list,aruco_degree_list):
         self.id = id
@@ -56,7 +71,14 @@ class Robot_Team():
                     slice_aruco_y_list.append(aruco_y_list[index])
                     slice_aruco_degree_list.append(aruco_degree_list[index])
 
-                self.Robot_list[robot_id].update_robot_position(robot_id,slice_aruco_id_list,slice_aruco_x_list,slice_aruco_y_list,slice_aruco_degree_list)
+                robot_uni_id = robot_id
+                if(self.color == "red"):
+                    # print(self.color)
+                    robot_uni_id = 2*robot_id + 1
+                else:
+                    robot_uni_id  = 2*robot_id
+
+                self.Robot_list[robot_id].update_robot_position(robot_uni_id,slice_aruco_id_list,slice_aruco_x_list,slice_aruco_y_list,slice_aruco_degree_list)
     def get_information(self):
         print("Team:",self.color," num:",len(self.Robot_list),"\n")
         for robot in self.Robot_list:
@@ -115,7 +137,7 @@ if __name__ == '__main__':
     dist_matrix = np.load(distortion_coefficients_path)
 
     cap = cv2.VideoCapture(1,cv2.CAP_DSHOW) 
-    cap = cv2.VideoCapture('2024-03-27_19-19-03.mp4') # 讀取電腦中的影片
+    cap = cv2.VideoCapture('WIN_20240327_19_19_04_Pro.mp4') # 讀取電腦中的影片
 
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
@@ -147,7 +169,7 @@ if __name__ == '__main__':
         frame = gamma_correction(frame, gamma=0.5)
         # frame = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        aruco_dict = cv2.aruco.getPredefinedDictionary(aruco.DICT_4X4_100)
+        aruco_dict = cv2.aruco.getPredefinedDictionary(aruco.DICT_5X5_100)
         parameters =  cv2.aruco.DetectorParameters()
         parameters.perspectiveRemoveIgnoredMarginPerCell = 0.3
         parameters.adaptiveThreshWinSizeMin = 3
@@ -177,7 +199,7 @@ if __name__ == '__main__':
         blue_team.update_position(blue_id_list,blue_x_list,blue_y_list,blue_degree_list)
         red_team.update_position(red_id_list,red_x_list,red_y_list,red_degree_list)
 
-        # red_team.get_information()
+        red_team.get_information()
         blue_team.get_information()
 
         # frame_resized = cv2.resize(frame, (0, 0), fx=1000, fy=800)
