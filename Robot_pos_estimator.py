@@ -66,7 +66,9 @@ def calc_Aruco_distance(tvec):
     distance_y = (tvec[0][0][1]) * 100  
     distance_z = (tvec[0][0][2]) * 100  
     if (distance_z):#判斷值是否正確
-        tmp = distance_z*distance_z - (CAMERA_HEIGHT*100)**2
+        print("dist : ",distance_z)
+        print(CAMERA_HEIGHT)
+        tmp = distance_y**2+ distance_z**2 - (CAMERA_HEIGHT*100)**2
         distance = np.sqrt(tmp)
     else:
         distance = -99999#不能計算
@@ -74,7 +76,10 @@ def calc_Aruco_distance(tvec):
 
 def robot_pos_estimation(id,rvecs,tvecs):
     # print("id = ",id)
-    rotation_bias = []
+    rotation_bias = [[1,0,0],
+                         [0,1,0],
+                         [0,0,1]]
+
     t_vecs_bias = [0,0,0]
     # new_rvecs = np.ndarray((len(rvecs),3))
     rvecs = rvecs[0]
@@ -112,14 +117,17 @@ def robot_pos_estimation(id,rvecs,tvecs):
                          [0,np.sin(np.deg2rad(-90)),np.cos(np.deg2rad(-90))]]
              
         rotation_bias = np.dot(rotation_bias_1,rotation_bias_2)
-    elif(id == 8 or id == 9):#back
+    # elif(id == 8 or id == 9):#back
+    elif(id == 6 or id == 7):#back
         # print("go id == 9")
         # t_vecs_bias = np.dot(inv_R,[[0],[0.05],[-0.05]]).flatten()
         t_vecs_bias = np.dot(inv_R,[[0],[0],[0]]).flatten()
-        rotation_bias = [[1,0,0],[0,np.cos(np.deg2rad(-90)),-np.sin(np.deg2rad(-90))],[0,np.sin(np.deg2rad(-90)),np.cos(np.deg2rad(-90))]]
+        rotation_bias = [[1,0,0],
+                         [0,np.cos(np.deg2rad(-90)),-np.sin(np.deg2rad(-90))],
+                         [0,np.sin(np.deg2rad(-90)),np.cos(np.deg2rad(-90))]]
 
         
-    elif(id == 10 or id == 11):#right
+    elif(id == 8 or id == 9):#right
         # print("go id == 9")
         t_vecs_bias = np.dot(inv_R,[[0],[0],[0]]).flatten()
         
@@ -178,7 +186,7 @@ def get_Aruco_information(camera_matrix,dist_matrix,frame,corners,ids):
                 ###### 距離估計 #####
                 distance,distance_x,distance_y,distance_z = calc_Aruco_distance(tvec=new_tvec)
 
-                distance_list.append(round(distance_z,2))
+                distance_list.append(round(distance,2))
                 distance_x_list.append(round(distance_x,2))
                 degree_list.append(round(rz,2))
                 degree_list_x.append(round(rx,2))
@@ -187,7 +195,9 @@ def get_Aruco_information(camera_matrix,dist_matrix,frame,corners,ids):
                 id_list.append(ids[index][0])
 
     else:
-        cv2.putText(frame, "No Ids", (0,64), font, 1, (0,255,0),2,cv2.LINE_AA)    
+        cv2.putText(frame, "No Ids", (0,64), font, 1, (0,255,0),2,cv2.LINE_AA)
+
+    # display(frame,id_list,degree_list_x,degree_list_y,degree_list_z,distance_list)
     return frame,id_list,distance_list,distance_x_list,degree_list,degree_list_x,degree_list_y,degree_list_z
 
 if __name__ == '__main__':
@@ -197,10 +207,11 @@ if __name__ == '__main__':
     dist_matrix = np.load(distortion_coefficients_path)
 
     cap = cv2.VideoCapture(1,cv2.CAP_DSHOW) 
-    # cap = cv2.VideoCapture('2024-03-27_19-19-03.mp4') # 讀取電腦中的影片
+    # cap = cv2.VideoCapture('2024-03-27_19-20-54.mp4') # 讀取電腦中的影片
+    cap = cv2.VideoCapture('2024-04-04_02-57-45.mp4') # 讀取電腦中的影片
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
-    cap.set(cv2.CAP_PROP_FPS, 60)  # 设置帧率为60帧/秒
+    cap.set(cv2.CAP_PROP_FPS, 60)  # 设置帧率为60帧/秒  
     font = cv2.FONT_HERSHEY_SIMPLEX #font for displaying text (below)
 
     #num = 0
@@ -227,7 +238,9 @@ if __name__ == '__main__':
         frame,id_list,distance_list,distance_x_list,degree_list,degree_list_x,degree_list_y,degree_list_z\
               = get_Aruco_information(camera_matrix=camera_matrix,dist_matrix=dist_matrix,frame=frame,corners=corners,ids=ids)
         
-        # display(frame,id_list,degree_list_x,degree_list_y,degree_list_z,distance_list)
+        display(frame,id_list,degree_list_x,degree_list_y,degree_list_z,distance_list)
+        cv2.namedWindow('frame', cv2.WINDOW_NORMAL)
+        cv2.resizeWindow('frame', 1200, 800)
         cv2.imshow("frame",frame)
         key = cv2.waitKey(1)
 
