@@ -12,7 +12,7 @@ FIELD_LENGTH = 3.4
 FIELD_WIDTH = 1.8
 
 class Robot():
-    def __init__(self,id,aruco_id_list,aruco_x_list,aruco_y_list,aruco_degree_list):
+    def __init__(self,id,aruco_id_list,aruco_x_list,aruco_y_list,aruco_degree_list,camera_setting = "right"):
         self.id = id 
         self.aruco_id_list = aruco_id_list
         self.aruco_x_list = aruco_x_list
@@ -21,6 +21,8 @@ class Robot():
         self.x = 0
         self.y = 0
         self.degree = 0
+        
+        self.camera_setting = camera_setting
     
     def robot_pose_estimation(self):
         index = 999
@@ -41,10 +43,12 @@ class Robot():
 
         if(index != 999):#,3,5,7,9,counterclockwise
             print("index",index,"sef",self.aruco_x_list )
-            self.x = FIELD_LENGTH* 100 - (self.aruco_x_list[index] - CAMERA_DISTANCE*100)
-            # self.x = self.aruco_x_list[index] - CAMERA_DISTANCE*100
-            self.y = (FIELD_WIDTH* 100/2 - self.aruco_y_list[index])
-            # self.y = (FIELD_WIDTH* 100/2 + self.aruco_y_list[index])
+            if self.camera_setting == "left":
+                self.x = self.aruco_x_list[index] - CAMERA_DISTANCE*100
+                self.y = (FIELD_WIDTH * 100 // 2 + self.aruco_y_list[index])
+            elif self.camera_setting == "right":
+                self.x = FIELD_LENGTH* 100 - (self.aruco_x_list[index] - CAMERA_DISTANCE*100)
+                self.y = (FIELD_WIDTH * 100 // 2 - self.aruco_y_list[index])
 
             self.degree = self.aruco_degree_list[index]
 
@@ -83,6 +87,7 @@ class Robot_Team():
                     robot_uni_id  = 2*robot_id
 
                 self.Robot_list[robot_id].update_robot_position(robot_uni_id,slice_aruco_id_list,slice_aruco_x_list,slice_aruco_y_list,slice_aruco_degree_list)
+    
     def get_information(self):
         print("Team:",self.color," num:",len(self.Robot_list),"\n")
         for robot in self.Robot_list:
@@ -126,7 +131,42 @@ class Ball():
             transform_ball_y = int((ballcenter[1] / 1080) * FIELD_WIDTH * 100)
             [self.x,self.y] = [transform_ball_x,transform_ball_y]
    
-            
+class Camera():
+    def __init__(self,index,video_path = False):
+        self.index = index
+        self.video_path = video_path
+        self.camera_setting()
+
+    def __call__(self):
+        return self.cap
+    
+    def camera_setting(self):
+
+        if self.index == "left":
+            calibration_matrix_path = "./calibration_matrix.npy"
+            distortion_coefficients_path = "./distortion_coefficients.npy"
+        elif self.index == "right":
+            calibration_matrix_path = "./calibration_matrix_right.npy"
+            distortion_coefficients_path = "./distortion_coefficients_right.npy"
+
+        self.camera_matrix = np.load(calibration_matrix_path)
+        self.dist_matrix = np.load(distortion_coefficients_path)
+
+        cap = cv2.VideoCapture(1,cv2.CAP_DSHOW) 
+        if (self.video_path):
+        # cap = cv2.VideoCapture('2024-03-27_19-20-54.mp4') # 讀取電腦中的影片
+            cap = cv2.VideoCapture(self.video_path) # 讀取電腦中的影片
+
+        cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
+        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
+        cap.set(cv2.CAP_PROP_FPS, 60)  # 设置帧率为60帧/秒
+
+        if not cap.isOpened():
+            print("Cannot open camera")
+            exit()
+        
+        self.cap = cap
+    
 def gamma_correction(frame, gamma=1.0):
 	# build a lookup table mapping the pixel values [0, 255] to
 	# their adjusted gamma values
@@ -137,31 +177,19 @@ def gamma_correction(frame, gamma=1.0):
 	return cv2.LUT(frame, table)
  
 if __name__ == '__main__':
-    calibration_matrix_path = "./calibration_matrix.npy"
-    distortion_coefficients_path = "./distortion_coefficients.npy"
-    camera_matrix = np.load(calibration_matrix_path)
-    dist_matrix = np.load(distortion_coefficients_path)
-
-    cap = cv2.VideoCapture(1,cv2.CAP_DSHOW) 
-    # cap = cv2.VideoCapture('2024-03-27_19-20-54.mp4') # 讀取電腦中的影片
-    cap = cv2.VideoCapture('2024-03-27_19-16-30.mp4') # 讀取電腦中的影片
-
-    cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
-    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
-    cap.set(cv2.CAP_PROP_FPS, 60)  # 设置帧率为60帧/秒
+    camera1 = Camera("left",video_path="2024-03-27_19-16-30.mp4")
+    cap1 = camera1()
     font = cv2.FONT_HERSHEY_SIMPLEX #font for displaying text (below)
     red_team = Robot_Team(color='red',length = 2)
     blue_team = Robot_Team(color='blue',length = 2)
     ball = Ball()
-
-    if not cap.isOpened():
-        print("Cannot open camera")
-        exit()
+    
     while True:
+        cap = cap1
         ret, frame = cap.read()
         h1, w1 = frame.shape[:2]
         #糾正畸變
-        newcameramtx, roi = cv2.getOptimalNewCameraMatrix(camera_matrix, dist_matrix, (h1, w1), 1, (h1, w1))
+        newcameramtx, roi = cv2.getOptimalNewCameraMatrix(camera1.camera_matrix, camera1.dist_matrix, (h1, w1), 1, (h1, w1))
         # dst1 = cv2.undistort(frame, camera_matrix, dist_matrix, None, newcameramtx)
         # x, y, w1, h1 = roi
         # dst1 = dst1[y:y + h1, x:x + w1]
@@ -176,7 +204,7 @@ if __name__ == '__main__':
         frame = gamma_correction(frame, gamma=0.5)
         # frame = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        aruco_dict = cv2.aruco.getPredefinedDictionary(aruco.DICT_5X5_100)
+        aruco_dict = cv2.aruco.getPredefinedDictionary(aruco.DICT_4X4_100)
         parameters =  cv2.aruco.DetectorParameters()
         parameters.perspectiveRemoveIgnoredMarginPerCell = 0.3
         parameters.adaptiveThreshWinSizeMin = 3
@@ -186,9 +214,10 @@ if __name__ == '__main__':
         #使用aruco.detectMarkers()函數可以檢測到marker，返回ID和标志板的4个角点坐標
         corners, ids, rejectedImgPoints = detector.detectMarkers(gray)
         frame,id_list,distance_list,distance_x_list,degree_list,degree_list_x,degree_list_y,degree_list_z\
-              = get_Aruco_information(camera_matrix=camera_matrix,dist_matrix=dist_matrix,frame=frame,corners=corners,ids=ids)
-        print("dis",distance_list,distance_x_list)
+              = get_Aruco_information(camera_matrix=camera1.camera_matrix,dist_matrix=camera1.dist_matrix,frame=frame,corners=corners,ids=ids)
+        # print("dis",distance_list,distance_x_list)
         red_id_list,blue_id_list,red_x_list,blue_x_list,red_y_list,blue_y_list,red_degree_list,blue_degree_list = [],[],[],[],[],[],[],[]
+
         for index,id in enumerate(id_list):
             if id % 2 == 0:
                 #even,blue team
@@ -202,9 +231,9 @@ if __name__ == '__main__':
                 red_x_list.append(distance_list[index])
                 red_y_list.append(distance_x_list[index])
                 red_degree_list.append(degree_list[index])
-        print("check",red_degree_list)
-        print("red_dist",red_x_list)
-        print("blue_dist",blue_x_list)
+        # print("check",red_degree_list)
+        # print("red_dist",red_x_list)
+        # print("blue_dist",blue_x_list)
         blue_team.update_position(blue_id_list,blue_x_list,blue_y_list,blue_degree_list)
         red_team.update_position(red_id_list,red_x_list,red_y_list,red_degree_list)
 
