@@ -176,6 +176,24 @@ def gamma_correction(frame, gamma=1.0):
     	# apply gamma correction using the lookup table
 	return cv2.LUT(frame, table)
  
+class Aruco():
+    def __init__(self):
+        self.aruco_dict = cv2.aruco.getPredefinedDictionary(aruco.DICT_4X4_100)
+        self.parameters =  cv2.aruco.DetectorParameters()
+        self.parameters.perspectiveRemoveIgnoredMarginPerCell = 0.3
+        self.parameters.adaptiveThreshWinSizeMin = 3
+        self.parameters.adaptiveThreshWinSizeMax = 60
+        self.detector = cv2.aruco.ArucoDetector(self.aruco_dict, self.parameters)
+    
+    def update(self,frame):
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        #使用aruco.detectMarkers()函數可以檢測到marker，返回ID和标志板的4个角点坐標
+        corners, ids, rejectedImgPoints = self.detector.detectMarkers(gray)
+        return corners,ids,rejectedImgPoints
+
+
+
+
 if __name__ == '__main__':
     camera1 = Camera("left",video_path="2024-03-27_19-16-30.mp4")
     cap1 = camera1()
@@ -183,7 +201,7 @@ if __name__ == '__main__':
     red_team = Robot_Team(color='red',length = 2)
     blue_team = Robot_Team(color='blue',length = 2)
     ball = Ball()
-    
+    aruco_define = Aruco()
     while True:
         cap = cap1
         ret, frame = cap.read()
@@ -202,17 +220,8 @@ if __name__ == '__main__':
         # frame = cv2.warpPerspective(frame, m, (1080, 1920))
         # frame = gamma_correction(frame,0.2)
         frame = gamma_correction(frame, gamma=0.5)
-        # frame = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        aruco_dict = cv2.aruco.getPredefinedDictionary(aruco.DICT_4X4_100)
-        parameters =  cv2.aruco.DetectorParameters()
-        parameters.perspectiveRemoveIgnoredMarginPerCell = 0.3
-        parameters.adaptiveThreshWinSizeMin = 3
-        parameters.adaptiveThreshWinSizeMax = 60
-        detector = cv2.aruco.ArucoDetector(aruco_dict, parameters)
-
-        #使用aruco.detectMarkers()函數可以檢測到marker，返回ID和标志板的4个角点坐標
-        corners, ids, rejectedImgPoints = detector.detectMarkers(gray)
+        corners,ids,rejectedImgPoints = aruco_define.update(frame = frame)
+        
         frame,id_list,distance_list,distance_x_list,degree_list,degree_list_x,degree_list_y,degree_list_z\
               = get_Aruco_information(camera_matrix=camera1.camera_matrix,dist_matrix=camera1.dist_matrix,frame=frame,corners=corners,ids=ids)
         # print("dis",distance_list,distance_x_list)
