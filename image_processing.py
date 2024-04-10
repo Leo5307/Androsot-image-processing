@@ -7,9 +7,9 @@ from Robot_pos_estimator import my_estimatePoseSingleMarkers,calc_Aruco_distance
 from color_masking import colorMasking
 ARUCO_SIZE = 0.08#0.053
 CAMERA_HEIGHT = 1.5
-CAMERA_DISTANCE = 1
-FIELD_LENGTH = 3.6
-FIELD_WIDTH = 2.6
+CAMERA_DISTANCE = 1.2
+FIELD_LENGTH = 3.4
+FIELD_WIDTH = 1.8
 
 class Robot():
     def __init__(self,id,aruco_id_list,aruco_x_list,aruco_y_list,aruco_degree_list):
@@ -28,7 +28,7 @@ class Robot():
         if self.id == 0:
             order = [0,6,2,8,4]
         elif self.id == 1:
-            order = [1,9,3,5,11]
+            order = [1,7,3,5,9]
         elif self.id == 2:
             order = [0,16,12,18,14]
         elif self.id == 3:
@@ -40,8 +40,12 @@ class Robot():
                 break
 
         if(index != 999):#,3,5,7,9,counterclockwise
+            print("index",index,"sef",self.aruco_x_list )
             self.x = FIELD_LENGTH* 100 - (self.aruco_x_list[index] - CAMERA_DISTANCE*100)
+            # self.x = self.aruco_x_list[index] - CAMERA_DISTANCE*100
             self.y = (FIELD_WIDTH* 100/2 - self.aruco_y_list[index])
+            # self.y = (FIELD_WIDTH* 100/2 + self.aruco_y_list[index])
+
             self.degree = self.aruco_degree_list[index]
 
     def update_robot_position(self,id,aruco_id_list,aruco_x_list,aruco_y_list,aruco_degree_list):
@@ -98,14 +102,15 @@ class Ball():
         dataradius = []  # 儲存半徑座標
         for cnt in contours:
             (x, y, w, h) = cv2.boundingRect(cnt)  # 取出輪廓外接的最小正矩形座標
-            if w * h > 100 and w * h < 2000 and w < 5 * h and h < 5 * w:  # 過濾面積小於150的矩形
+            # print("check",w,h)
+            if w * h > 100 and w * h < 3000 and w < 5 * h and h < 5 * w:  # 過濾面積小於150的矩形
                 (xx, yy), radius = cv2.minEnclosingCircle(cnt)  # 找出最小外接圓
                 ball_x = int(xx)
                 ball_y = int(yy)
                 center = [ball_x,ball_y]
                 radius = int(radius)
-                
-                if radius > 20:
+                # print(radius,"radius")
+                if radius > 15:
                     cv2.circle(frame, center, radius, (0,255,0), 3)  # 畫圓
                     cv2.putText(frame, "Ball", (x, y - 5), font, 0.7, (0,255,0), 2)  # 螢幕上寫出"Ball"
                     datacenter.append(center)  # 儲存球心座標
@@ -113,9 +118,10 @@ class Ball():
                     
                     # print(center)
         #只取第一個
+        # print("datacenter",contours)
         if (datacenter):#這裡可以做一個要求只在范圍內的過濾
             ballcenter = datacenter[0]
-            print(ballcenter)
+            # print(ballcenter)
             transform_ball_x = int((ballcenter[0] / 1920) * FIELD_LENGTH * 100)
             transform_ball_y = int((ballcenter[1] / 1080) * FIELD_WIDTH * 100)
             [self.x,self.y] = [transform_ball_x,transform_ball_y]
@@ -137,7 +143,8 @@ if __name__ == '__main__':
     dist_matrix = np.load(distortion_coefficients_path)
 
     cap = cv2.VideoCapture(1,cv2.CAP_DSHOW) 
-    cap = cv2.VideoCapture('WIN_20240327_19_19_04_Pro.mp4') # 讀取電腦中的影片
+    # cap = cv2.VideoCapture('2024-03-27_19-20-54.mp4') # 讀取電腦中的影片
+    cap = cv2.VideoCapture('2024-03-27_19-16-30.mp4') # 讀取電腦中的影片
 
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
@@ -155,9 +162,9 @@ if __name__ == '__main__':
         h1, w1 = frame.shape[:2]
         #糾正畸變
         newcameramtx, roi = cv2.getOptimalNewCameraMatrix(camera_matrix, dist_matrix, (h1, w1), 1, (h1, w1))
-        dst1 = cv2.undistort(frame, camera_matrix, dist_matrix, None, newcameramtx)
-        x, y, w1, h1 = roi
-        dst1 = dst1[y:y + h1, x:x + w1]
+        # dst1 = cv2.undistort(frame, camera_matrix, dist_matrix, None, newcameramtx)
+        # x, y, w1, h1 = roi
+        # dst1 = dst1[y:y + h1, x:x + w1]
         # frame = dst1
         points_path = "./points.npy"
         points = np.load(points_path)
@@ -180,7 +187,7 @@ if __name__ == '__main__':
         corners, ids, rejectedImgPoints = detector.detectMarkers(gray)
         frame,id_list,distance_list,distance_x_list,degree_list,degree_list_x,degree_list_y,degree_list_z\
               = get_Aruco_information(camera_matrix=camera_matrix,dist_matrix=dist_matrix,frame=frame,corners=corners,ids=ids)
-
+        print("dis",distance_list,distance_x_list)
         red_id_list,blue_id_list,red_x_list,blue_x_list,red_y_list,blue_y_list,red_degree_list,blue_degree_list = [],[],[],[],[],[],[],[]
         for index,id in enumerate(id_list):
             if id % 2 == 0:
@@ -195,7 +202,9 @@ if __name__ == '__main__':
                 red_x_list.append(distance_list[index])
                 red_y_list.append(distance_x_list[index])
                 red_degree_list.append(degree_list[index])
-
+        print("check",red_degree_list)
+        print("red_dist",red_x_list)
+        print("blue_dist",blue_x_list)
         blue_team.update_position(blue_id_list,blue_x_list,blue_y_list,blue_degree_list)
         red_team.update_position(red_id_list,red_x_list,red_y_list,red_degree_list)
 
@@ -203,11 +212,11 @@ if __name__ == '__main__':
         blue_team.get_information()
 
         # frame_resized = cv2.resize(frame, (0, 0), fx=1000, fy=800)
-        # frame = cv2.warpPerspective(frame, m, (1080, 1920))
-        # frame = cv2.rotate(frame, cv2.ROTATE_90_COUNTERCLOCKWISE)
+        frame = cv2.warpPerspective(frame, m, (1080, 1920))
+        frame = cv2.rotate(frame, cv2.ROTATE_90_COUNTERCLOCKWISE)
         ball.update_position()
-        cv2.putText(frame,'coordinates:'+ str([blue_team.Robot_list[0].x,blue_team.Robot_list[0].y]) ,(0, 110), font, 1, (0, 255, 0), 2,cv2.LINE_AA)
-        cv2.putText(frame,'deg_z:'+ str(blue_team.Robot_list[0].degree) ,(0, 150), font, 1, (0, 255, 0), 2,cv2.LINE_AA)
+        cv2.putText(frame,'coordinates:'+ str([red_team.Robot_list[0].x,red_team.Robot_list[0].y]) ,(0, 110), font, 1, (0, 255, 0), 2,cv2.LINE_AA)
+        cv2.putText(frame,'deg_z:'+ str(red_team.Robot_list[0].degree) ,(0, 150), font, 1, (0, 255, 0), 2,cv2.LINE_AA)
         cv2.putText(frame,'ballcenter:'+ str([ball.x,ball.y]) ,(0, 190), font, 1, (0, 255, 0), 2,cv2.LINE_AA)
         cv2.namedWindow('frame', cv2.WINDOW_NORMAL)
         cv2.resizeWindow('frame', 1200, 800)
